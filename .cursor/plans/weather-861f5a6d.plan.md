@@ -1,4 +1,45 @@
-<!-- 861f5a6d-882c-46c8-b40b-f1ee49414334 67a345f3-7f4c-46a3-8644-3f7a959cb400 -->
+---
+name: Weather Aggregation Service Plan
+overview: ""
+todos:
+  - id: 2a3619bb-d48c-4af9-9da0-7c2655d662d1
+    content: Set up Go module, folder structure, and basic `main.go` with Fiber v2, logging, and recovery middleware wired.
+    status: pending
+  - id: 831f1006-a4b8-42f5-b145-f43adbfa4567
+    content: Define domain models (locations, weather snapshots) and implement the in-memory, concurrency-safe storage layer.
+    status: pending
+  - id: d0eb9753-9b6c-4a70-90a6-c87c0c6a5b92
+    content: Implement provider interfaces and concrete clients for OpenWeatherMap, WeatherAPI, and Open-Meteo with normalization logic.
+    status: pending
+  - id: 44984ad8-579d-4326-92b5-e756ef415452
+    content: Add concurrency, retry with exponential backoff, and a simple circuit breaker around provider calls, plus aggregation logic.
+    status: pending
+  - id: 44a3c7be-ed48-4871-bdbd-8e65e074246a
+    content: Introduce a scheduler that runs every 15 minutes and orchestrates per-location data fetching and storage.
+    status: pending
+  - id: 2eed88be-0a65-447b-9085-076b8f92daff
+    content: Implement REST endpoints for current and historical weather, including request validation and error handling, using Fiber v2.
+    status: pending
+  - id: adeb1ff6-4b49-43e7-a192-42ef70870d96
+    content: Set up Go module, folder structure, and basic `main.go` with Fiber v2, logging, and recovery middleware wired.
+    status: pending
+  - id: 607f8835-801f-4e53-902e-92e5ee8eb3c3
+    content: Define domain models (locations, weather snapshots) and implement the in-memory, concurrency-safe storage layer.
+    status: pending
+  - id: 8d9a4527-aa0f-42f0-ba8f-5cce933dc234
+    content: Implement provider interfaces and concrete clients for OpenWeatherMap, WeatherAPI, and Open-Meteo with normalization logic.
+    status: pending
+  - id: 3fe1d8e3-5471-4045-9fc4-015d4bdf4ce7
+    content: Add concurrency, retry with exponential backoff, and a simple circuit breaker around provider calls, plus aggregation logic.
+    status: pending
+  - id: 56683fef-7757-4041-8260-23f4ab5b8b98
+    content: Introduce a scheduler that runs every 15 minutes and orchestrates per-location data fetching and storage.
+    status: pending
+  - id: 553315f6-ea4b-4f29-b850-2db78f3127cc
+    content: Implement REST endpoints for current and historical weather, including request validation and error handling, using Fiber v2.
+    status: pending
+---
+
 # Weather Aggregation Service Plan
 
 ## 1. Overall Architecture
@@ -160,18 +201,3 @@
 - Add authentication/authorization for APIs if exposed beyond trusted networks.
 - Add more providers or support for forecast data in addition to current conditions.
 - Expose metrics (Prometheus) for provider success rates, latency, scheduler runs, and HTTP handler performance.
-
-### To-dos
-
-- [ ] Set up Go module, folder structure, and basic `main.go` with Fiber v2, logging, and recovery middleware wired.
-- [ ] Define domain models (locations, weather snapshots) and implement the in-memory, concurrency-safe storage layer.
-- [ ] Implement provider interfaces and concrete clients for OpenWeatherMap, WeatherAPI, and Open-Meteo with normalization logic.
-- [ ] Add concurrency, retry with exponential backoff, and a simple circuit breaker around provider calls, plus aggregation logic.
-- [ ] Introduce a scheduler that runs every 15 minutes and orchestrates per-location data fetching and storage.
-- [ ] Implement REST endpoints for current and historical weather, including request validation and error handling, using Fiber v2.
-- [ ] Set up Go module, folder structure, and basic `main.go` with Fiber v2, logging, and recovery middleware wired.
-- [ ] Define domain models (locations, weather snapshots) and implement the in-memory, concurrency-safe storage layer.
-- [ ] Implement provider interfaces and concrete clients for OpenWeatherMap, WeatherAPI, and Open-Meteo with normalization logic.
-- [ ] Add concurrency, retry with exponential backoff, and a simple circuit breaker around provider calls, plus aggregation logic.
-- [ ] Introduce a scheduler that runs every 15 minutes and orchestrates per-location data fetching and storage.
-- [ ] Implement REST endpoints for current and historical weather, including request validation and error handling, using Fiber v2.

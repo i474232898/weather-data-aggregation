@@ -41,11 +41,11 @@ func main() {
 	if cfg.OpenWeatherAPIKey != "" {
 		provs = append(provs, providers.NewOpenWeatherProvider(httpClient, cfg.OpenWeatherAPIKey))
 	}
-	if cfg.WeatherAPIKey != "" {
-		provs = append(provs, providers.NewWeatherAPIProvider(httpClient, cfg.WeatherAPIKey))
-	}
+	// if cfg.WeatherAPIKey != "" {
+	// 	provs = append(provs, providers.NewWeatherAPIProvider(httpClient, cfg.WeatherAPIKey))
+	// }
 	// Open-Meteo does not require an API key.
-	provs = append(provs, providers.NewOpenMeteoProvider(httpClient))
+	// provs = append(provs, providers.NewOpenMeteoProvider(httpClient))
 
 	// Core service orchestrating providers and store.
 	service := weather.NewService(memStore, provs)

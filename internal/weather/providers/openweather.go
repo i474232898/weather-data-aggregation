@@ -14,11 +14,11 @@ import (
 
 // OpenWeatherProvider implements the weather.Provider interface for OpenWeatherMap.
 type OpenWeatherProvider struct {
-	name      string
-	apiKey    string
-	baseURL   string
-	httpCfg   HTTPClientConfig
-	circuit   *gobreaker.CircuitBreaker
+	name    string
+	apiKey  string
+	baseURL string
+	httpCfg HTTPClientConfig
+	circuit *gobreaker.CircuitBreaker
 }
 
 func NewOpenWeatherProvider(client *http.Client, apiKey string) *OpenWeatherProvider {
@@ -59,17 +59,17 @@ func (p *OpenWeatherProvider) Fetch(ctx context.Context, loc weather.Location) (
 		values.Set("appid", p.apiKey)
 		values.Set("units", "metric")
 
-		if loc.Lat != nil && loc.Lon != nil {
-			values.Set("lat", fmt.Sprintf("%f", *loc.Lat))
-			values.Set("lon", fmt.Sprintf("%f", *loc.Lon))
-		} else {
-			// city,country
-			q := loc.City
-			if loc.Country != "" {
-				q = fmt.Sprintf("%s,%s", loc.City, loc.Country)
-			}
-			values.Set("q", q)
+		// if loc.Lat != nil && loc.Lon != nil {
+		// 	values.Set("lat", fmt.Sprintf("%f", *loc.Lat))
+		// 	values.Set("lon", fmt.Sprintf("%f", *loc.Lon))
+		// } else {
+		// city,country
+		q := loc.City
+		if loc.Country != "" {
+			q = fmt.Sprintf("%s,%s", loc.City, loc.Country)
 		}
+		values.Set("q", q)
+		// }
 
 		u := fmt.Sprintf("%s?%s", p.baseURL, values.Encode())
 		req, err := http.NewRequest(http.MethodGet, u, nil)
@@ -96,7 +96,7 @@ func (p *OpenWeatherProvider) Fetch(ctx context.Context, loc weather.Location) (
 			Speed float64 `json:"speed"`
 		} `json:"wind"`
 		Rain struct {
-			OneH float64 `json:"1h"`
+			OneH   float64 `json:"1h"`
 			ThreeH float64 `json:"3h"`
 		} `json:"rain"`
 		Weather []struct {
@@ -132,7 +132,9 @@ func (p *OpenWeatherProvider) Fetch(ctx context.Context, loc weather.Location) (
 	}, nil
 }
 
-func mapOpenWeatherCondition(items []struct{ Main string `json:"main"` }) weather.Condition {
+func mapOpenWeatherCondition(items []struct {
+	Main string `json:"main"`
+}) weather.Condition {
 	if len(items) == 0 {
 		return weather.ConditionUnknown
 	}
@@ -151,5 +153,3 @@ func mapOpenWeatherCondition(items []struct{ Main string `json:"main"` }) weathe
 		return weather.ConditionUnknown
 	}
 }
-
-
