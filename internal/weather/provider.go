@@ -25,11 +25,22 @@ type Provider interface {
 	Fetch(ctx context.Context, loc Location) (ProviderReading, error)
 }
 
+// ForecastProvider is an optional extension of Provider that can return
+// a multi-day forecast as a slice of normalized provider readings, one
+// per day, ordered by ascending date.
+//
+// Implementations are expected to:
+//   - Normalize timestamps to UTC.
+//   - Return at most `days` entries, starting from "today" (provider-defined).
+//   - Include the provider name in each reading.
+type ForecastProvider interface {
+	Provider
+	FetchForecast(ctx context.Context, loc Location, days int) ([]ProviderReading, error)
+}
+
 // Store is the contract the in-memory store (and any future persistent store) must satisfy.
 type Store interface {
 	SaveSnapshot(loc Location, snapshot WeatherSnapshot)
 	GetLatest(loc Location) (WeatherSnapshot, error)
 	GetRange(loc Location, from, to time.Time) ([]WeatherSnapshot, error)
 }
-
-

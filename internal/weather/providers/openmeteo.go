@@ -50,6 +50,12 @@ func (p *OpenMeteoProvider) Name() string {
 	return p.name
 }
 
+// NOTE: The forecast HTTP endpoint currently uses a placeholder implementation
+// based on the latest aggregated snapshot rather than calling a dedicated
+// provider-level forecast API. This provider continues to supply current
+// conditions only via Fetch; it can be extended in the future to expose
+// true multi-day forecast data when needed.
+
 func (p *OpenMeteoProvider) Fetch(ctx context.Context, loc weather.Location) (weather.ProviderReading, error) {
 	// Geocode city and country to get latitude and longitude
 	lat, lon, err := p.geocodeLocation(ctx, loc)

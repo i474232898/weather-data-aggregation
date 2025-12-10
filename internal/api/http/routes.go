@@ -62,6 +62,32 @@ func RegisterRoutes(app *fiber.App, service *weather.Service) {
 			"snapshots": snapshots,
 		})
 	})
+
+	v1.Get("/weather/forecast", func(c *fiber.Ctx) error {
+		var req forecastQuery
+		if err := req.bind(c); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		}
+
+		if err := validate.Struct(req); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		}
+
+		loc := req.Location.toLocation()
+		forecast, err := service.GetForecast(loc, req.Days)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				return fiber.NewError(fiber.StatusNotFound, "no forecast data for requested location")
+			}
+			return fiber.NewError(fiber.StatusInternalServerError, "failed to fetch weather forecast")
+		}
+
+		return c.JSON(fiber.Map{
+			"location": loc,
+			"days":     req.Days,
+			"forecast": forecast,
+		})
+	})
 }
 
 // locationQuery holds query parameters for identifying a location.
@@ -133,4 +159,31 @@ func parseTime(s string) (time.Time, error) {
 		return time.Unix(unix, 0).UTC(), nil
 	}
 	return time.Time{}, errors.New("invalid time format; use RFC3339 or unix seconds")
+}
+
+// forecastQuery holds query parameters for the forecast endpoint.
+type forecastQuery struct {
+	Location locationQuery
+	Days     int `validate:"required,min=1,max=7"`
+}
+
+func (f *forecastQuery) bind(c *fiber.Ctx) error {
+	loc, err := parseLocationQuery(c)
+	if err != nil {
+		return err
+	}
+	f.Location = loc
+
+	daysStr := c.Query("days")
+	if daysStr == "" {
+		return errors.New("days query parameter is required")
+	}
+
+	days, err := strconv.Atoi(daysStr)
+	if err != nil {
+		return errors.New("days must be an integer between 1 and 7")
+	}
+
+	f.Days = days
+	return nil
 }

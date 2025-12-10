@@ -72,5 +72,3 @@ func AggregateReadings(loc Location, readings []ProviderReading) WeatherSnapshot
 		Providers:   providers,
 	}
 }
-
-

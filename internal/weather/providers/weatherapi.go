@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -120,6 +122,101 @@ func (p *WeatherAPIProvider) Fetch(ctx context.Context, loc weather.Location) (w
 		PrecipMm:     payload.Current.PrecipMm,
 		Condition:    cond,
 	}, nil
+}
+
+// FetchForecast retrieves a multi-day forecast from WeatherAPI.com and returns
+// one normalized ProviderReading per day, ordered by ascending date.
+func (p *WeatherAPIProvider) FetchForecast(ctx context.Context, loc weather.Location, days int) ([]weather.ProviderReading, error) {
+	if p.apiKey == "" {
+		return nil, fmt.Errorf("weatherapi api key is not configured")
+	}
+	if days <= 0 {
+		return nil, fmt.Errorf("days must be greater than zero")
+	}
+
+	// WeatherAPI free tier supports up to 10 days of forecast data.
+	if days > 10 {
+		days = 10
+	}
+
+	forecastURL := strings.Replace(p.baseURL, "current.json", "forecast.json", 1)
+
+	buildRequest := func() (*http.Request, error) {
+		values := url.Values{}
+		values.Set("key", p.apiKey)
+
+		q := loc.City
+		if loc.Country != "" {
+			q = fmt.Sprintf("%s,%s", loc.City, loc.Country)
+		}
+		values.Set("q", q)
+		values.Set("days", strconv.Itoa(days))
+
+		u := fmt.Sprintf("%s?%s", forecastURL, values.Encode())
+		req, err := http.NewRequest(http.MethodGet, u, nil)
+		if err != nil {
+			return nil, err
+		}
+		return req, nil
+	}
+
+	resp, err := doRequestWithResilience(ctx, p.httpCfg, p.circuit, buildRequest)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var payload struct {
+		Forecast struct {
+			Forecastday []struct {
+				DateEpoch int64 `json:"date_epoch"`
+				Day       struct {
+					AvgTempC      float64 `json:"avgtemp_c"`
+					Avghumidity   float64 `json:"avghumidity"`
+					MaxWindKph    float64 `json:"maxwind_kph"`
+					TotalPrecipMm float64 `json:"totalprecip_mm"`
+					Condition     struct {
+						Text string `json:"text"`
+					} `json:"condition"`
+				} `json:"day"`
+			} `json:"forecastday"`
+		} `json:"forecast"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, err
+	}
+
+	if len(payload.Forecast.Forecastday) == 0 {
+		return nil, nil
+	}
+
+	readings := make([]weather.ProviderReading, 0, len(payload.Forecast.Forecastday))
+	for _, fd := range payload.Forecast.Forecastday {
+		ts := time.Unix(fd.DateEpoch, 0).UTC()
+		cond := mapWeatherAPICondition(fd.Day.Condition.Text)
+
+		// Convert wind from kph to m/s (approx).
+		windMS := fd.Day.MaxWindKph / 3.6
+
+		readings = append(readings, weather.ProviderReading{
+			ProviderName: p.name,
+			Timestamp:    ts,
+			TemperatureC: fd.Day.AvgTempC,
+			HumidityPct:  fd.Day.Avghumidity,
+			WindSpeedMS:  windMS,
+			// Pressure is not provided in the aggregated daily forecast; leave as zero.
+			PrecipMm:  fd.Day.TotalPrecipMm,
+			Condition: cond,
+		})
+	}
+
+	// Ensure readings are ordered by date ascending.
+	sort.Slice(readings, func(i, j int) bool {
+		return readings[i].Timestamp.Before(readings[j].Timestamp)
+	})
+
+	return readings, nil
 }
 
 func mapWeatherAPICondition(text string) weather.Condition {

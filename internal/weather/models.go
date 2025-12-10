@@ -44,6 +44,11 @@ type WeatherSnapshot struct {
 	Providers []ProviderContribution `json:"providers,omitempty"`
 }
 
+// Forecast represents a simple multi-day weather forecast
+// as a slice of normalized weather snapshots, one per day.
+// Forecast entries are expected to be ordered by Timestamp ascending.
+type Forecast []WeatherSnapshot
+
 // ProviderContribution describes data coming from a single provider used in aggregation.
 type ProviderContribution struct {
 	ProviderName string    `json:"provider"`
