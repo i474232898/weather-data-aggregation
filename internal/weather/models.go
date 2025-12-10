@@ -1,7 +1,6 @@
 package weather
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -15,23 +14,18 @@ const (
 	ConditionRain    Condition = "rain"
 	ConditionSnow    Condition = "snow"
 	ConditionStorm   Condition = "storm"
+	ConditionMist    Condition = "mist"
 )
 
 // Location represents a logical place for which we track weather.
-// Either City/Country or Lat/Lon must be provided.
+// City/Country must be provided.
 type Location struct {
-	City    string   `json:"city,omitempty"`
-	Country string   `json:"country,omitempty"`
-	Lat     *float64 `json:"lat,omitempty"`
-	Lon     *float64 `json:"lon,omitempty"`
+	City    string `json:"city"`
+	Country string `json:"country"`
 }
 
 // Key returns a canonical string key for indexing this location in stores.
 func (l Location) Key() string {
-	if l.Lat != nil && l.Lon != nil {
-		return formatCoord(*l.Lat, *l.Lon)
-	}
-	// Fallback to city-country key
 	return l.City + ":" + l.Country
 }
 
@@ -55,11 +49,3 @@ type ProviderContribution struct {
 	ProviderName string    `json:"provider"`
 	Timestamp    time.Time `json:"timestamp"`
 }
-
-// formatCoord formats latitude and longitude as a stable key string.
-func formatCoord(lat, lon float64) string {
-	// Fixed precision for key stability.
-	return fmt.Sprintf("lat=%.4f,lon=%.4f", lat, lon)
-}
-
-

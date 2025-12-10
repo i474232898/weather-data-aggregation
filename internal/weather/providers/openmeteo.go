@@ -9,18 +9,20 @@ import (
 	"time"
 
 	"github.com/i474232898/weather-data-aggregation/internal/weather"
+	"github.com/kelvins/geocoder"
 	"github.com/sony/gobreaker"
 )
 
 // OpenMeteoProvider implements the weather.Provider interface for Open-Meteo.
 type OpenMeteoProvider struct {
-	name    string
-	baseURL string
-	httpCfg HTTPClientConfig
-	circuit *gobreaker.CircuitBreaker
+	name        string
+	baseURL     string
+	httpCfg     HTTPClientConfig
+	circuit     *gobreaker.CircuitBreaker
+	geocoderKey string
 }
 
-func NewOpenMeteoProvider(client *http.Client) *OpenMeteoProvider {
+func NewOpenMeteoProvider(client *http.Client, geocoderKey string) *OpenMeteoProvider {
 	cb := gobreaker.NewCircuitBreaker(gobreaker.Settings{
 		Name:        "openmeteo",
 		MaxRequests: 5,
@@ -29,8 +31,9 @@ func NewOpenMeteoProvider(client *http.Client) *OpenMeteoProvider {
 	})
 
 	return &OpenMeteoProvider{
-		name:    "openmeteo",
-		baseURL: "https://api.open-meteo.com/v1/forecast",
+		name:        "openmeteo",
+		baseURL:     "https://api.open-meteo.com/v1/forecast",
+		geocoderKey: geocoderKey,
 		httpCfg: HTTPClientConfig{
 			Client: client,
 			Backoff: BackoffConfig{
@@ -48,14 +51,16 @@ func (p *OpenMeteoProvider) Name() string {
 }
 
 func (p *OpenMeteoProvider) Fetch(ctx context.Context, loc weather.Location) (weather.ProviderReading, error) {
-	if loc.Lat == nil || loc.Lon == nil {
-		return weather.ProviderReading{}, fmt.Errorf("openmeteo requires latitude and longitude")
+	// Geocode city and country to get latitude and longitude
+	lat, lon, err := p.geocodeLocation(ctx, loc)
+	if err != nil {
+		return weather.ProviderReading{}, fmt.Errorf("failed to geocode location %s: %w", loc.Key(), err)
 	}
 
 	buildRequest := func() (*http.Request, error) {
 		values := url.Values{}
-		values.Set("latitude", fmt.Sprintf("%f", *loc.Lat))
-		values.Set("longitude", fmt.Sprintf("%f", *loc.Lon))
+		values.Set("latitude", fmt.Sprintf("%f", lat))
+		values.Set("longitude", fmt.Sprintf("%f", lon))
 		values.Set("current_weather", "true")
 
 		u := fmt.Sprintf("%s?%s", p.baseURL, values.Encode())
@@ -122,4 +127,28 @@ func mapOpenMeteoCondition(code int) weather.Condition {
 	}
 }
 
+// geocodeLocation converts a city and country name to latitude and longitude using geocoder.
+func (p *OpenMeteoProvider) geocodeLocation(ctx context.Context, loc weather.Location) (float64, float64, error) {
+	// Set the geocoder API key if provided
+	if p.geocoderKey != "" {
+		geocoder.ApiKey = p.geocoderKey
+	}
 
+	// Build the address for geocoding
+	address := geocoder.Address{
+		City:    loc.City,
+		Country: loc.Country,
+	}
+
+	// Perform geocoding
+	location, err := geocoder.Geocoding(address)
+	if err != nil {
+		return 0, 0, fmt.Errorf("geocoding failed: %w", err)
+	}
+
+	if location.Latitude == 0 && location.Longitude == 0 {
+		return 0, 0, fmt.Errorf("geocoding returned zero coordinates for %s, %s", loc.City, loc.Country)
+	}
+
+	return location.Latitude, location.Longitude, nil
+}

@@ -19,9 +19,14 @@ import (
 	"github.com/i474232898/weather-data-aggregation/internal/store"
 	"github.com/i474232898/weather-data-aggregation/internal/weather"
 	"github.com/i474232898/weather-data-aggregation/internal/weather/providers"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("INFO: No .env file found or error loading it: %v", err)
+	}
+
 	// Load configuration.
 	cfg, err := config.Load()
 	if err != nil {
@@ -38,14 +43,12 @@ func main() {
 
 	// Providers with resilience (backoff + circuit breaker).
 	var provs []weather.Provider
-	if cfg.OpenWeatherAPIKey != "" {
-		provs = append(provs, providers.NewOpenWeatherProvider(httpClient, cfg.OpenWeatherAPIKey))
-	}
-	// if cfg.WeatherAPIKey != "" {
-	// 	provs = append(provs, providers.NewWeatherAPIProvider(httpClient, cfg.WeatherAPIKey))
-	// }
-	// Open-Meteo does not require an API key.
-	// provs = append(provs, providers.NewOpenMeteoProvider(httpClient))
+
+	provs = append(provs, providers.NewOpenWeatherProvider(httpClient, cfg.OpenWeatherAPIKey))
+	provs = append(provs, providers.NewWeatherAPIProvider(httpClient, cfg.WeatherAPIKey))
+
+	// Open-Meteo does not require an API key, but geocoding requires a Google API key.
+	// provs = append(provs, providers.NewOpenMeteoProvider(httpClient, cfg.GeocoderAPIKey))
 
 	// Core service orchestrating providers and store.
 	service := weather.NewService(memStore, provs)

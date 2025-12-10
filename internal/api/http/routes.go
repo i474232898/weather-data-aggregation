@@ -66,18 +66,14 @@ func RegisterRoutes(app *fiber.App, service *weather.Service) {
 
 // locationQuery holds query parameters for identifying a location.
 type locationQuery struct {
-	City    string   `validate:"required"`
-	Country string   `validate:"required"`
-	// Lat     *float64 `validate:"required_without=City"`
-	// Lon     *float64 `validate:"required_without=City"`
+	City    string `validate:"required"`
+	Country string `validate:"required"`
 }
 
 func (l locationQuery) toLocation() weather.Location {
 	return weather.Location{
 		City:    l.City,
 		Country: l.Country,
-		// Lat:     l.Lat,
-		// Lon:     l.Lon,
 	}
 }
 
@@ -86,21 +82,6 @@ func parseLocationQuery(c *fiber.Ctx) (locationQuery, error) {
 
 	q.City = c.Query("city")
 	q.Country = c.Query("country")
-
-	// if latStr := c.Query("lat"); latStr != "" {
-	// 	if v, err := strconv.ParseFloat(latStr, 64); err == nil {
-	// 		q.Lat = &v
-	// 	} else {
-	// 		return q, err
-	// 	}
-	// }
-	// if lonStr := c.Query("lon"); lonStr != "" {
-	// 	if v, err := strconv.ParseFloat(lonStr, 64); err == nil {
-	// 		q.Lon = &v
-	// 	} else {
-	// 		return q, err
-	// 	}
-	// }
 
 	if err := validate.Struct(q); err != nil {
 		return q, err

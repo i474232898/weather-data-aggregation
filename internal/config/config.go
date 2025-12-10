@@ -86,22 +86,6 @@ func loadPrimaryLocation() (weather.Location, error) {
 		loc.Country = country
 	}
 
-	latStr := os.Getenv("WEATHER_LOCATION_LAT")
-	lonStr := os.Getenv("WEATHER_LOCATION_LON")
-
-	if latStr != "" && lonStr != "" {
-		lat, err := strconv.ParseFloat(latStr, 64)
-		if err != nil {
-			return weather.Location{}, fmt.Errorf("invalid WEATHER_LOCATION_LAT: %w", err)
-		}
-		lon, err := strconv.ParseFloat(lonStr, 64)
-		if err != nil {
-			return weather.Location{}, fmt.Errorf("invalid WEATHER_LOCATION_LON: %w", err)
-		}
-		loc.Lat = &lat
-		loc.Lon = &lon
-	}
-
 	return loc, nil
 }
 
@@ -121,5 +105,3 @@ func getenvInt(key string, def int) int {
 	}
 	return def
 }
-
-

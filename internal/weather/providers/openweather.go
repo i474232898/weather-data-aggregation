@@ -28,7 +28,7 @@ func NewOpenWeatherProvider(client *http.Client, apiKey string) *OpenWeatherProv
 		Interval:    1 * time.Minute,
 		Timeout:     2 * time.Minute,
 	})
-
+	fmt.Println("apiKey>>", apiKey)
 	return &OpenWeatherProvider{
 		name:    "openweathermap",
 		apiKey:  apiKey,
@@ -59,17 +59,11 @@ func (p *OpenWeatherProvider) Fetch(ctx context.Context, loc weather.Location) (
 		values.Set("appid", p.apiKey)
 		values.Set("units", "metric")
 
-		// if loc.Lat != nil && loc.Lon != nil {
-		// 	values.Set("lat", fmt.Sprintf("%f", *loc.Lat))
-		// 	values.Set("lon", fmt.Sprintf("%f", *loc.Lon))
-		// } else {
-		// city,country
 		q := loc.City
 		if loc.Country != "" {
 			q = fmt.Sprintf("%s,%s", loc.City, loc.Country)
 		}
 		values.Set("q", q)
-		// }
 
 		u := fmt.Sprintf("%s?%s", p.baseURL, values.Encode())
 		req, err := http.NewRequest(http.MethodGet, u, nil)

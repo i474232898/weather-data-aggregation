@@ -2,6 +2,7 @@ package weather
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -30,6 +31,12 @@ func (s *Service) FetchAndStore(ctx context.Context, loc Location) error {
 		readings []ProviderReading
 	)
 
+	log.Printf("DEBUG: FetchAndStore called for %s with %d providers", loc.Key(), len(s.providers))
+	if len(s.providers) == 0 {
+		log.Printf("ERROR: No providers available to fetch weather data for %s", loc.Key())
+		return fmt.Errorf("no weather providers configured")
+	}
+
 	for _, p := range s.providers {
 		p := p
 		wg.Add(1)
@@ -45,6 +52,7 @@ func (s *Service) FetchAndStore(ctx context.Context, loc Location) error {
 
 			mu.Lock()
 			readings = append(readings, r)
+			fmt.Println("readings>>", readings)
 			mu.Unlock()
 		}()
 	}
@@ -74,5 +82,3 @@ func (s *Service) GetLatest(loc Location) (WeatherSnapshot, error) {
 func (s *Service) GetRange(loc Location, from, to time.Time) ([]WeatherSnapshot, error) {
 	return s.store.GetRange(loc, from, to)
 }
-
-

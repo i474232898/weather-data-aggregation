@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/i474232898/weather-data-aggregation/internal/common"
 	"github.com/i474232898/weather-data-aggregation/internal/weather"
 	"github.com/sony/gobreaker"
 )
@@ -59,15 +60,11 @@ func (p *WeatherAPIProvider) Fetch(ctx context.Context, loc weather.Location) (w
 		values := url.Values{}
 		values.Set("key", p.apiKey)
 		// WeatherAPI uses "q" for location; it accepts "city,country" or "lat,lon".
-		if loc.Lat != nil && loc.Lon != nil {
-			values.Set("q", fmt.Sprintf("%f,%f", *loc.Lat, *loc.Lon))
-		} else {
-			q := loc.City
-			if loc.Country != "" {
-				q = fmt.Sprintf("%s,%s", loc.City, loc.Country)
-			}
-			values.Set("q", q)
+		q := loc.City
+		if loc.Country != "" {
+			q = fmt.Sprintf("%s,%s", loc.City, loc.Country)
 		}
+		values.Set("q", q)
 
 		u := fmt.Sprintf("%s?%s", p.baseURL, values.Encode())
 		req, err := http.NewRequest(http.MethodGet, u, nil)
@@ -126,26 +123,22 @@ func (p *WeatherAPIProvider) Fetch(ctx context.Context, loc weather.Location) (w
 }
 
 func mapWeatherAPICondition(text string) weather.Condition {
+	t := strings.ToLower(text)
+
 	switch {
-	case text == "":
-		return weather.ConditionUnknown
-	case contains(text, "rain") || contains(text, "shower") || contains(text, "drizzle"):
+	case common.HasAny(t, "rain", "shower", "drizzle"):
 		return weather.ConditionRain
-	case contains(text, "snow") || contains(text, "sleet") || contains(text, "blizzard"):
+	case common.HasAny(t, "snow", "sleet", "blizzard"):
 		return weather.ConditionSnow
-	case contains(text, "thunder") || contains(text, "storm"):
+	case common.HasAny(t, "thunder", "storm"):
 		return weather.ConditionStorm
-	case contains(text, "cloud"):
+	case common.HasAny(t, "cloud"):
 		return weather.ConditionCloudy
-	case contains(text, "sunny") || contains(text, "clear"):
+	case common.HasAny(t, "sunny", "clear"):
 		return weather.ConditionClear
+	case common.HasAny(t, "mist", "fog", "haze"):
+		return weather.ConditionMist
 	default:
 		return weather.ConditionUnknown
 	}
 }
-
-func contains(s, sub string) bool {
-	return strings.Contains(strings.ToLower(s), strings.ToLower(sub))
-}
-
-
