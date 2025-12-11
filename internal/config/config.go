@@ -2,20 +2,22 @@ package config
 
 import (
 	"fmt"
+	"github.com/joho/godotenv"
+	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/i474232898/weather-data-aggregation/internal/weather"
 )
 
-// AppConfig holds application configuration loaded from environment variables.
 type AppConfig struct {
 	OpenWeatherAPIKey string
 	WeatherAPIKey     string
 
-	// SchedulerInterval controls how often we fetch data for each location.
-	SchedulerInterval time.Duration
+	// FetchInterval controls how often we fetch data for each location.
+	FetchInterval time.Duration
 
 	// Locations to track.
 	Locations []weather.Location
@@ -24,24 +26,26 @@ type AppConfig struct {
 	StoreMaxHistory int           // max number of snapshots per location (0 = unlimited)
 	StoreMaxAge     time.Duration // max age of snapshots (0 = unlimited)
 
-	// HTTP timeout for outbound provider calls.
-	HTTPTimeout time.Duration
+	Port string
 }
 
 // Load reads configuration from environment with sensible defaults.
 func Load() (*AppConfig, error) {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("INFO: No .env file found or error loading it: %v", err)
+	}
 	cfg := &AppConfig{}
 
 	cfg.OpenWeatherAPIKey = os.Getenv("OPENWEATHER_API_KEY")
 	cfg.WeatherAPIKey = os.Getenv("WEATHERAPI_API_KEY")
 
 	// Scheduler interval: default 15 minutes.
-	intervalStr := getenvDefault("SCHEDULER_INTERVAL", "15m")
+	intervalStr := getenvDefault("FETCH_INTERVAL", "15m")
 	interval, err := time.ParseDuration(intervalStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid SCHEDULER_INTERVAL: %w", err)
+		return nil, fmt.Errorf("invalid FETCH_INTERVAL: %w", err)
 	}
-	cfg.SchedulerInterval = interval
+	cfg.FetchInterval = interval
 
 	// Store retention.
 	cfg.StoreMaxHistory = getenvInt("STORE_MAX_HISTORY", 96) // roughly 24h at 15-minute intervals
@@ -52,41 +56,34 @@ func Load() (*AppConfig, error) {
 		return nil, fmt.Errorf("invalid STORE_MAX_AGE: %w", err)
 	}
 	cfg.StoreMaxAge = maxAge
+	cfg.Port = getenvDefault("PORT", "8080")
 
-	// HTTP timeout for outbound requests.
-	httpTimeoutStr := getenvDefault("HTTP_TIMEOUT", "10s")
-	httpTimeout, err := time.ParseDuration(httpTimeoutStr)
-	if err != nil {
-		return nil, fmt.Errorf("invalid HTTP_TIMEOUT: %w", err)
-	}
-	cfg.HTTPTimeout = httpTimeout
-
-	// Locations: for simplicity, support a single primary location via env.
-	loc, err := loadPrimaryLocation()
+	locs, err := loadPrimaryLocation()
 	if err != nil {
 		return nil, err
 	}
-	cfg.Locations = []weather.Location{loc}
+	cfg.Locations = locs
 
 	return cfg, nil
 }
 
-func loadPrimaryLocation() (weather.Location, error) {
+func loadPrimaryLocation() ([]weather.Location, error) {
 	city := os.Getenv("WEATHER_LOCATION_CITY")
 	country := os.Getenv("WEATHER_LOCATION_COUNTRY")
-
-	var loc weather.Location
-
-	if city == "" {
-		// Provide a sensible default for local development.
-		loc.City = "Kyiv"
-		loc.Country = "UA"
-	} else {
-		loc.City = city
-		loc.Country = country
+	cities := strings.Split(city, ",")
+	countries := strings.Split(country, ",")
+	if len(cities) != len(countries) {
+		return nil, fmt.Errorf("number of cities and countries must be the same")
+	}
+	var locs []weather.Location
+	for i := range cities {
+		locs = append(locs, weather.Location{
+			City:    cities[i],
+			Country: countries[i],
+		})
 	}
 
-	return loc, nil
+	return locs, nil
 }
 
 func getenvDefault(key, def string) string {

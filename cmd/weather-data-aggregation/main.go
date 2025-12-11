@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -19,14 +18,9 @@ import (
 	"github.com/i474232898/weather-data-aggregation/internal/store"
 	"github.com/i474232898/weather-data-aggregation/internal/weather"
 	"github.com/i474232898/weather-data-aggregation/internal/weather/providers"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Printf("INFO: No .env file found or error loading it: %v", err)
-	}
-
 	// Load configuration.
 	cfg, err := config.Load()
 	if err != nil {
@@ -35,7 +29,7 @@ func main() {
 
 	// Shared HTTP client for outbound provider calls.
 	httpClient := &http.Client{
-		Timeout: cfg.HTTPTimeout,
+		Timeout: time.Duration(10 * time.Second),
 	}
 
 	// In-memory store with configured retention.
@@ -54,13 +48,12 @@ func main() {
 	service := weather.NewService(memStore, provs)
 
 	// Scheduler that periodically fetches and stores data.
-	sched := scheduler.New(cfg.Locations, cfg.SchedulerInterval, service)
+	sched := scheduler.New(cfg.Locations, cfg.FetchInterval, service)
 	if err := sched.Start(); err != nil {
 		log.Fatalf("failed to start scheduler: %v", err)
 	}
 	defer sched.Stop()
 
-	// Basic app configuration
 	app := fiber.New(fiber.Config{
 		AppName:               "weather-data-aggregation",
 		DisableStartupMessage: true,
@@ -83,7 +76,6 @@ func main() {
 	app.Use(logger.New())
 	app.Use(recover.New())
 
-	// Basic health endpoint
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"status":  "ok",
@@ -94,24 +86,17 @@ func main() {
 	// API routes.
 	httpapi.RegisterRoutes(app, service)
 
-	// Start server with graceful shutdown
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
 	go func() {
-		if err := app.Listen(":" + port); err != nil {
+		if err := app.Listen(":" + cfg.Port); err != nil {
 			log.Printf("fiber server stopped: %v", err)
 		}
 	}()
 
-	// Wait for termination signal
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	<-ctx.Done()
-
+	log.Println("Received termination signal, shutting down.")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
